@@ -28,4 +28,8 @@ Con eso, hazme un artefacto para entenderlo en lenguaje simple: arranca con una 
 PEDIDO 4
 
 Ahora aplícalo a nuestro juego: arma un control de misión dentro de la simulación, con el patrón que encontraste en Open MCT (cada dato con su nombre, unidad y proveedor) y 4 datos reales de Percy:
-- Distancia recorrida, altura del terreno e inclinación, del historial de manejos de la NASA: https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20
+- Distancia recorrida, altura del terreno e inclinación, del historial de manejos de la NASA: https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json
+- Tiempo de luz entre la Tierra y Marte, calculado en vivo.
+Cada dato con su valor, una gráfica de toda la misión y una frase simple de qué significa. Que se sienta parte del juego y que la tecla T lo oculte. No instales nada. Sin fotos: esas son del acto 3.
+
+Listo cuando: los 4 muestran números reales y T lo oculta. Amplía npm run check para que confirme que los 4 cargaron y que la consola no tiene errores.

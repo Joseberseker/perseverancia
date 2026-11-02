@@ -7,6 +7,10 @@ import { createMoons } from './moons.js'
 import { createDust } from './dust.js'
 import { createTracks } from './tracks.js'
 import { loadRover, createRoverController } from './rover.js'
+import { crearTelemetryAPI, objetoDeTelemetria } from './telemetry.js'
+import { crearProveedorNASA, CLAVES_NASA, solActual } from './providers/nasaWaypoints.js'
+import { crearProveedorLuz } from './providers/lightTime.js'
+import { createMissionControl } from './missionControl.js'
 
 // La escena está en metros. El rover mide 3 m de largo.
 
@@ -164,8 +168,26 @@ loadRover()
 // --- Entrada --------------------------------------------------------------
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyC') colocarCamaraDetras(true)
-  if (e.code === 'KeyT') tracks.limpiar()
+  if (e.code === 'KeyB') tracks.limpiar()
+  if (e.code === 'KeyT') control.toggle()
 })
+
+// --- Control de misión ----------------------------------------------------
+// Telemetría real de Percy, con el patrón de proveedores de NASA Open MCT.
+const telemetry = crearTelemetryAPI()
+telemetry.addProvider(crearProveedorNASA())
+telemetry.addProvider(crearProveedorLuz())
+
+const control = createMissionControl({
+  telemetry,
+  objetos: [...CLAVES_NASA, 'luz'].map((k) => objetoDeTelemetria(k)),
+  solActual,
+})
+document.body.appendChild(control.el)
+
+window.__telemetria = control.estado
+window.__app.telemetry = telemetry
+window.__app.control = control
 
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight

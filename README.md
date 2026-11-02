@@ -21,8 +21,12 @@ rover **Perseverance** de la NASA conducible a escala real.
 - **El rover Perseverance** de la NASA, a su tamaño real de 3 metros.
 - **Conducción con WASD**, con el rover inclinándose según la pendiente.
 - **Huellas de las ruedas** con el patrón de galones de los grousers reales.
+- **Control de misión** con telemetría real de Percy: distancia recorrida, altura del
+  terreno e inclinación del historial de manejos de la NASA, más el tiempo de luz
+  Tierra–Marte calculado en vivo con elementos orbitales del JPL.
 - **Verificación automática** con `npm run check`: abre la página en un Chrome
-  headless, guarda una captura y falla si hay errores de consola.
+  headless, guarda una captura, comprueba que los cuatro datos cargaron y falla si
+  hay errores de consola.
 
 ## Capturas
 
@@ -48,7 +52,8 @@ npm run dev          # http://localhost:5173
 | `W` `A` `S` `D` o flechas | Conducir |
 | `Shift` | Turbo |
 | `C` | Devolver la cámara detrás del rover |
-| `T` | Borrar las huellas |
+| `T` | Mostrar u ocultar el control de misión |
+| `B` | Borrar las huellas |
 | `R` | Volver al punto de inicio |
 | Ratón | Arrastrar para orbitar, rueda para acercar |
 
@@ -59,9 +64,10 @@ npm run check
 ```
 
 Abre la página en un Chromium headless (el que Playwright ya tenga en caché, **sin
-descargar navegadores**), espera a que la escena termine de renderizar, guarda
-`check/screenshot.png` y `check/console.json`, y sale con código ≠ 0 si hubo errores
-de consola. Útil para CI y para revisar un cambio sin abrir el navegador.
+descargar navegadores**), espera a que la escena termine de renderizar, comprueba que
+los cuatro datos del control de misión trajeron números reales y que la tecla `T` los
+oculta, guarda `check/screenshot.png` y `check/console.json`, y sale con código ≠ 0 si
+hubo errores. Útil para CI y para revisar un cambio sin abrir el navegador.
 
 ## Cómo está hecho
 
@@ -77,6 +83,11 @@ src/
   dust.js       polvo en suspensión
   rover.js      carga del GLB, escala real y conducción
   tracks.js     huellas de las ruedas
+  telemetry.js  mini TelemetryAPI con el patrón de proveedores de NASA Open MCT
+  missionControl.js  el panel: valor, gráfica de toda la misión y qué significa
+  providers/
+    nasaWaypoints.js  historial real de manejos (NASA MMGIS)
+    lightTime.js      distancia Tierra-Marte por elementos orbitales del JPL
 scripts/
   check.mjs     verificación automática con Playwright
 public/
@@ -99,6 +110,17 @@ que se le ponga. Las lunas y las rocas se veían facetadas hasta que pasaron por
 suma de ondas con **frecuencias enteras** sobre el cuadro `[0,1)`: así son periódicos
 por construcción y se pueden tilear sobre el terreno sin que se vea la junta.
 
+### Los datos de la NASA no se pueden pedir desde el navegador
+
+El historial de manejos vive en `mars.nasa.gov` y **sí** manda `Access-Control-Allow-Origin: *`,
+pero lo sirve con `Vary: Origin` detrás de CloudFront: la CDN entrega variantes cacheadas
+**sin** esa cabecera y el `fetch` falla por CORS de forma intermitente. Un proxy que
+reenvíe la petición tampoco funciona — con las cabeceras del navegador, CloudFront
+responde 403.
+
+La solución es un plugin de Vite de veinte líneas (`vite.config.js`): lo descarga Node y
+lo sirve como propio, cacheado en memoria. Mismo dato, misma fuente, sin instalar nada.
+
 ### Decisiones conscientes
 
 - **La velocidad no es real.** El Perseverance se mueve a 0.042 m/s (152 metros por
@@ -107,6 +129,9 @@ por construcción y se pueden tilear sobre el terreno sin que se vea la junta.
   guarden proporción con él.
 - **Las lunas se ven más grandes** de lo que se verían desde la superficie de Marte.
   Licencia poética para que se aprecien los cráteres.
+- **La odometría se corrige.** 129 de los 708 waypoints traen `dist_total_m = 0`: son
+  marcas de «site increment, no motion», no lecturas reales. Se arrastra el máximo,
+  porque un odómetro nunca retrocede.
 
 ## Créditos
 
