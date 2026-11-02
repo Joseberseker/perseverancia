@@ -1,0 +1,17 @@
+{
+  "name": "perseverancia",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1",
+    "three": "^0.187.0",
+    "vite": "^8.3.5"
+  }
+}
