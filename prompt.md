@@ -23,3 +23,9 @@ Clona https://github.com/nasa/openmct. Es el software de control de misión de l
 Usa dos subagentes en paralelo: uno mapea la arquitectura (el núcleo y los plugins) y otro sigue el viaje de un dato de telemetría, desde el proveedor hasta que aparece en una gráfica.
 
 Con eso, hazme un artefacto para entenderlo en lenguaje simple: arranca con una frase que lo explica fácilmente y luego un mapa-del-repo.html con un diagrama de cajas y flechas (cada caja con su archivo:línea), las 5 piezas clave y una sección "Cómo conectamos Percy". En español simple. No instales nada ni cambies su repo. Antes de entregar, abre 3 archivo:línea al azar y confirma que coinciden.
+
+
+PEDIDO 4
+
+Ahora aplícalo a nuestro juego: arma un control de misión dentro de la simulación, con el patrón que encontraste en Open MCT (cada dato con su nombre, unidad y proveedor) y 4 datos reales de Percy:
+- Distancia recorrida, altura del terreno e inclinación, del historial de manejos de la NASA: https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20
