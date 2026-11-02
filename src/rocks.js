@@ -31,11 +31,11 @@ function rockGeometry(detail, bumpiness, seed) {
 const PALETTE = ['#8a5c42', '#7a5747', '#a57149', '#6d5244', '#b8855d']
 
 // Rocas repartidas con InstancedMesh: muchas piedras, pocos draw calls.
-export function createRocks(height, { count = 1100, area = 420, seed = 31 } = {}) {
+export function createRocks(height, { count = 1300, area = 300, seed = 31 } = {}) {
   const variants = [
-    { geo: rockGeometry(5, 0.3, seed + 1), share: 0.5, size: [0.5, 1.6] },
-    { geo: rockGeometry(7, 0.42, seed + 2), share: 0.36, size: [1.0, 3.4] },
-    { geo: rockGeometry(10, 0.22, seed + 3), share: 0.14, size: [2.6, 7.0] },
+    { geo: rockGeometry(5, 0.3, seed + 1), share: 0.56, size: [0.12, 0.45] },
+    { geo: rockGeometry(7, 0.42, seed + 2), share: 0.33, size: [0.4, 1.1] },
+    { geo: rockGeometry(10, 0.22, seed + 3), share: 0.11, size: [0.7, 1.9] },
   ]
 
   const group = new THREE.Group()
@@ -58,7 +58,7 @@ export function createRocks(height, { count = 1100, area = 420, seed = 31 } = {}
     for (let i = 0; i < n; i++) {
       // Distribución en disco, más densa lejos del centro para dejar
       // despejado el punto de vista inicial.
-      const r = 10 + Math.sqrt(rand()) * area
+      const r = 4 + Math.sqrt(rand()) * area
       const a = rand() * Math.PI * 2
       const x = Math.cos(a) * r
       const z = Math.sin(a) * r

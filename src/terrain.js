@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { makeNoise2D, makeFbm } from './noise.js'
 import { sandMaps } from './textures.js'
 
-export const TERRAIN_SIZE = 900
+// La escena está en METROS: el rover mide 3 m de largo.
+export const TERRAIN_SIZE = 700
 
 // Campo de altura: relieve amplio + campo de dunas + rizos de arena.
 export function createHeightField(seed = 1337) {
@@ -12,26 +13,26 @@ export function createHeightField(seed = 1337) {
 
   return function height(x, z) {
     // Relieve de fondo: lomas suaves y una cuenca abierta.
-    let h = fbm(x * 0.0042, z * 0.0042) * 28
+    let h = fbm(x * 0.006, z * 0.006) * 11
 
     // Dunas transversales: crestas sinusoidales deformadas por ruido.
-    const w = warp(x * 0.0038, z * 0.0038)
-    const phase = x * 0.052 + z * 0.016 + w * 7.5
+    const w = warp(x * 0.005, z * 0.005)
+    const phase = x * 0.1 + z * 0.03 + w * 7.5
     const crest = 0.5 + 0.5 * Math.sin(phase)
     // Perfil asimétrico (barlovento tendido, sotavento corto) y dunas que
     // aparecen y desaparecen según una máscara de baja frecuencia.
-    const duneMask = THREE.MathUtils.clamp(mask(x * 0.0022, z * 0.0022) * 0.75 + 0.55, 0, 1)
-    h += Math.pow(crest, 1.8) * 7.0 * duneMask
+    const duneMask = THREE.MathUtils.clamp(mask(x * 0.003, z * 0.003) * 0.75 + 0.55, 0, 1)
+    h += Math.pow(crest, 1.8) * 3.2 * duneMask
 
     // Erosión de media escala: quiebra la suavidad de los flancos.
-    h += fbm(x * 0.016, z * 0.016) * 1.9
+    h += fbm(x * 0.03, z * 0.03) * 0.9
 
     // Rizos de arena transversales a la duna, y grano fino.
-    const ripple = 0.5 + 0.5 * Math.sin(x * 0.33 + z * 0.13 + w * 26.0 + fbm(x * 0.03, z * 0.03) * 4.0)
-    h += ripple * 0.16 * duneMask
-    h += fbm(x * 0.055, z * 0.055) * 0.55
-    h += fbm(x * 0.21, z * 0.21) * 0.17
-    h += fbm(x * 0.78, z * 0.78) * 0.05
+    const ripple = 0.5 + 0.5 * Math.sin(x * 1.1 + z * 0.42 + w * 26.0 + fbm(x * 0.09, z * 0.09) * 4.0)
+    h += ripple * 0.045 * duneMask
+    h += fbm(x * 0.17, z * 0.17) * 0.22
+    h += fbm(x * 0.62, z * 0.62) * 0.07
+    h += fbm(x * 2.3, z * 2.3) * 0.022
 
     return h
   }
@@ -42,7 +43,7 @@ const COL_MID = new THREE.Color('#a85c38')
 const COL_LIGHT = new THREE.Color('#d8a071')
 const COL_DUST = new THREE.Color('#e8bd91')
 
-export function createTerrain(height, segments = 512) {
+export function createTerrain(height, segments = 700) {
   const geometry = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, segments, segments)
   geometry.rotateX(-Math.PI / 2)
 
@@ -83,8 +84,8 @@ export function createTerrain(height, segments = 512) {
   geometry.computeVertexNormals()
 
   const { normalMap, roughnessMap } = sandMaps()
-  normalMap.repeat.set(38, 38)
-  roughnessMap.repeat.set(38, 38)
+  normalMap.repeat.set(90, 90) // ~7.8 m por baldosa
+  roughnessMap.repeat.set(90, 90)
 
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,

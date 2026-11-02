@@ -38,3 +38,44 @@ html, body {
   opacity: 0.72;
   letter-spacing: 0.02em;
 }
+
+#teclas {
+  position: fixed;
+  right: 24px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  color: #ffe6cf;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+  user-select: none;
+}
+
+#teclas div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.78;
+}
+
+#teclas .raton {
+  margin-top: 4px;
+  opacity: 0.5;
+  font-style: italic;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 230, 207, 0.35);
+  border-radius: 4px;
+  background: rgba(60, 25, 12, 0.45);
+  font: inherit;
+  font-size: 11px;
+  text-align: center;
+}
