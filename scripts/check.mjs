@@ -86,6 +86,7 @@ let listo = false
 let diag = null
 let telemetria = null
 let ocultaConT = null
+let movilidad = null
 
 const DATOS_ESPERADOS = ['distancia', 'altura', 'inclinacion', 'luz']
 
@@ -128,6 +129,73 @@ try {
     trasOcultar.claseOculto === true &&
     trasMostrar === true
 
+
+  // --- Las ruedas tienen que girar -------------------------------------
+  // Ojo: con SwiftShader la pagina va a 1-8 fps, asi que el dt real no
+  // acumula nada. Movemos el rover desde dentro, con pasos de 1/60 s.
+  movilidad = await page.evaluate(async () => {
+    const app = window.__app
+    const d = app?.driver
+    if (!d || !d.estado.ruedas.length) return { ok: false, motivo: 'no hay ruedas separadas' }
+
+    const foto = () => d.estado.ruedas.map((r) => r.anguloGiro)
+    const antes = foto()
+
+    // 1) Recto: 120 pasos con W pulsada.
+    const tecla = (code, tipo) =>
+      window.dispatchEvent(new KeyboardEvent(tipo, { code, bubbles: true }))
+    tecla('KeyW', 'keydown')
+    for (let i = 0; i < 120; i++) d.update(1 / 60)
+    const recto = {
+      avance: d.estado.distancia,
+      velocidad: d.estado.velocidad,
+      rpm: d.estado.rpm,
+      giros: foto().map((a, i) => Math.abs(a - antes[i])),
+    }
+
+    // 2) Arco: con A pulsada las ruedas de fuera tienen que girar mas.
+    tecla('KeyA', 'keydown')
+    const base = foto()
+    for (let i = 0; i < 120; i++) d.update(1 / 60)
+    const curva = foto().map((a, i) => a - base[i])
+    const porNombre = {}
+    d.estado.ruedas.forEach((r, i) => { porNombre[r.nombre] = curva[i] })
+    const direcciones = d.estado.ruedas.map((r) => ({
+      nombre: r.nombre, dirige: r.dirige, grados: (r.anguloDireccion * 180) / Math.PI,
+    }))
+    tecla('KeyA', 'keyup')
+    tecla('KeyW', 'keyup')
+
+    // 3) Giro sobre si mismo: parado y con A, las cuatro esquinas se cruzan.
+    for (let i = 0; i < 60; i++) d.update(1 / 60)
+    tecla('KeyA', 'keydown')
+    const rumboAntes = d.estado.rumbo
+    for (let i = 0; i < 180; i++) d.update(1 / 60)
+    const sitio = {
+      modo: d.estado.modo,
+      girados: ((d.estado.rumbo - rumboAntes) * 180) / Math.PI,
+      direcciones: d.estado.ruedas.map((r) => ({
+        nombre: r.nombre, grados: (r.anguloDireccion * 180) / Math.PI,
+      })),
+    }
+    tecla('KeyA', 'keyup')
+    for (let i = 0; i < 60; i++) d.update(1 / 60)
+
+    return {
+      ok: true,
+      numRuedas: d.estado.ruedas.length,
+      directrices: d.estado.ruedas.filter((r) => r.dirige).length,
+      radio: d.estado.ruedas[0].radio,
+      recto,
+      curva: porNombre,
+      direcciones,
+      sitio,
+      cabeceo: (d.estado.cabeceo * 180) / Math.PI,
+      balanceo: (d.estado.balanceo * 180) / Math.PI,
+      recorridos: d.estado.ruedas.map((r) => r.recorrido),
+    }
+  })
+
   // Deja correr unos frames para que el polvo y el damping se asienten.
   await page.waitForTimeout(1200)
   diag = await page.evaluate(() => window.__diag)
@@ -143,7 +211,7 @@ await browser.close()
 
 writeFileSync(
   join(OUT, 'console.json'),
-  JSON.stringify({ url: URL_APP, listo, diag, telemetria, ocultaConT, errores: errors, logs }, null, 2),
+  JSON.stringify({ url: URL_APP, listo, diag, telemetria, ocultaConT, movilidad, errores: errors, logs }, null, 2),
 )
 
 console.log(`\nnavegador : ${executablePath}`)
@@ -185,6 +253,86 @@ if (ocultaConT === true) {
 } else if (ocultaConT === false) {
   console.log('tecla T    : NO oculta el panel ✗')
   errors.push({ tipo: 'telemetria', texto: 'La tecla T no oculta el control de misión' })
+}
+
+// --- Movilidad ------------------------------------------------------------
+console.log('')
+if (!movilidad || !movilidad.ok) {
+  console.log(`movilidad : ✗ ${movilidad?.motivo || 'no se pudo medir'}`)
+  errors.push({ tipo: 'movilidad', texto: movilidad?.motivo || 'No se pudo medir la movilidad' })
+} else {
+  const m = movilidad
+  console.log('movilidad:')
+  const falla = (texto) => {
+    console.log(`  ✗ ${texto}`)
+    errors.push({ tipo: 'movilidad', texto })
+  }
+
+  if (m.numRuedas === 6) console.log(`  ✓ 6 ruedas separadas del GLB (radio ${m.radio.toFixed(3)} m)`)
+  else falla(`Esperaba 6 ruedas y hay ${m.numRuedas}`)
+
+  if (m.directrices === 4) console.log('  ✓ 4 ruedas directrices, 2 centrales fijas')
+  else falla(`Esperaba 4 ruedas directrices y hay ${m.directrices}`)
+
+  // Rodar sin resbalar: 2 s de marcha tienen que mover las seis ruedas.
+  const minGiro = Math.min(...m.recto.giros)
+  if (minGiro > 0.5) {
+    console.log(
+      `  ✓ las 6 ruedas giran al avanzar (mínimo ${minGiro.toFixed(2)} rad en 2 s, ` +
+        `${m.recto.rpm.toFixed(1)} rpm a ${m.recto.velocidad.toFixed(2)} m/s)`,
+    )
+  } else {
+    falla(`Alguna rueda no gira: mínimo ${minGiro.toFixed(3)} rad en 2 s de marcha`)
+  }
+
+  // En un arco a la izquierda, las ruedas de la derecha recorren mas.
+  const sum = (lado) =>
+    Object.entries(m.curva)
+      .filter(([n]) => n.includes(`_${lado}_`))
+      .reduce((a, [, v]) => a + v, 0)
+  const dentro = sum('izq')
+  const fuera = sum('der')
+  if (fuera > dentro + 0.05) {
+    console.log(`  ✓ en curva las de fuera giran más (${fuera.toFixed(2)} rad vs ${dentro.toFixed(2)})`)
+  } else {
+    falla(`El diferencial de curva no se nota: fuera ${fuera.toFixed(2)} rad, dentro ${dentro.toFixed(2)}`)
+  }
+
+  // Direccion: solo las esquinas, y las centrales a cero.
+  const centrales = m.direcciones.filter((d) => !d.dirige)
+  const esquinas = m.direcciones.filter((d) => d.dirige)
+  const maxEsquina = Math.max(...esquinas.map((d) => Math.abs(d.grados)))
+  const maxCentral = Math.max(...centrales.map((d) => Math.abs(d.grados)))
+  if (maxEsquina > 3 && maxCentral < 0.01) {
+    console.log(`  ✓ solo dirigen las esquinas (hasta ${maxEsquina.toFixed(1)}°, centrales a 0°)`)
+  } else {
+    falla(`Dirección rara: esquinas ${maxEsquina.toFixed(1)}°, centrales ${maxCentral.toFixed(2)}°`)
+  }
+
+  // Giro sobre si mismo: patron en X y el rover rota de verdad.
+  const ang = Object.fromEntries(m.sitio.direcciones.map((d) => [d.nombre, d.grados]))
+  const cruzadas =
+    Math.sign(ang.rueda_izq_delantera) !== Math.sign(ang.rueda_der_delantera) &&
+    Math.sign(ang.rueda_izq_delantera) !== Math.sign(ang.rueda_izq_trasera)
+  if (m.sitio.modo === 'sitio' && Math.abs(m.sitio.girados) > 20 && cruzadas) {
+    console.log(
+      `  ✓ gira sobre sí mismo ${m.sitio.girados.toFixed(0)}° en 3 s, ruedas en X ` +
+        `(${ang.rueda_izq_delantera.toFixed(0)}° / ${ang.rueda_der_delantera.toFixed(0)}°)`,
+    )
+  } else {
+    falla(
+      `Giro sobre sí mismo: modo=${m.sitio.modo} girados=${m.sitio.girados.toFixed(1)}° ` +
+        `patrón en X=${cruzadas}`,
+    )
+  }
+
+  // Rocker-bogie: cada rueda con su propia carrera.
+  const carreras = m.recorridos.map((v) => +v.toFixed(3))
+  const distintas = new Set(carreras).size
+  console.log(
+    `  ${distintas > 1 ? '✓' : '·'} rocker-bogie: cabeceo ${m.cabeceo.toFixed(1)}°, ` +
+      `balanceo ${m.balanceo.toFixed(1)}°, carreras [${carreras.join(', ')}] m`,
+  )
 }
 
 if (errors.length) {

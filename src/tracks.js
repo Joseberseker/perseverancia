@@ -80,7 +80,9 @@ export function createTracks({ porRodada = 420, anchoRueda = 0.4, largoMarca = 0
   const lateral = new THREE.Vector3()
 
   // Deja un par de marcas (rodada izquierda y derecha) en esta posición.
-  function marcar(pos, rumbo, normal) {
+  // `via` es la separación real entre las ruedas de un eje; si no llega,
+  // se usa la de fábrica.
+  function marcar(pos, rumbo, normal, via = separacion) {
     qTilt.setFromUnitVectors(UP, normal)
     qYaw.setFromAxisAngle(UP, rumbo)
     q.copy(qTilt).multiply(qYaw)
@@ -89,7 +91,7 @@ export function createTracks({ porRodada = 420, anchoRueda = 0.4, largoMarca = 0
     lateral.set(Math.cos(rumbo), 0, -Math.sin(rumbo))
 
     for (const lado of [-1, 1]) {
-      p.copy(pos).addScaledVector(lateral, (lado * separacion) / 2)
+      p.copy(pos).addScaledVector(lateral, (lado * via) / 2)
       p.y += 0.04 // justo encima del suelo, sin z-fighting
       m.compose(p, q, escala)
       mesh.setMatrixAt(cursor, m)

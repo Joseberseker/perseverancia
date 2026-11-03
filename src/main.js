@@ -6,7 +6,7 @@ import { createRocks } from './rocks.js'
 import { createMoons } from './moons.js'
 import { createDust } from './dust.js'
 import { createTracks } from './tracks.js'
-import { loadRover, createRoverController } from './rover.js'
+import { loadRover, createRoverController, FICHA } from './rover.js'
 import { crearTelemetryAPI, objetoDeTelemetria } from './telemetry.js'
 import { crearProveedorNASA, CLAVES_NASA, solActual } from './providers/nasaWaypoints.js'
 import { crearProveedorLuz } from './providers/lightTime.js'
@@ -133,7 +133,8 @@ loadRover()
     scene.add(rover.group)
 
     driver = createRoverController(rover.group, height, {
-      onTrack: (pos, rumbo, normal) => tracks.marcar(pos, rumbo, normal),
+      ruedas: rover.ruedas,
+      onTrack: (pos, rumbo, normal, via) => tracks.marcar(pos, rumbo, normal, via),
     })
 
     // Posición inicial sobre el terreno.
@@ -152,6 +153,38 @@ loadRover()
         `  (factor ${rover.medidas.escala.toExponential(3)})`,
       'color:#d98a5c',
     )
+
+    // --- Movilidad: las seis ruedas separadas del GLB --------------------
+    if (rover.ruedas) {
+      const m = rover.medidas.movilidad
+      console.log(
+        `%c\u2699\ufe0f Movilidad rocker-bogie: ${m.ruedas} ruedas motrices, 4 directrices`,
+        'font-weight:bold;color:#d98a5c',
+      )
+      console.log(
+        `   rueda \u00f8 ${m.diametro} m (real 0.525) \u00b7 ancho ${m.ancho} m \u00b7 ` +
+          `v\u00eda ${m.via} m \u00b7 batalla ${m.batalla} m`,
+      )
+      console.table(
+        rover.ruedas.ruedas.map((r) => ({
+          rueda: r.nombre,
+          lado: r.lado,
+          fila: ['delantera', 'media', 'trasera'][r.fila],
+          dirige: r.dirige,
+          x: +r.pos.x.toFixed(3),
+          z: +r.pos.z.toFixed(3),
+          radio: +r.radio.toFixed(3),
+        })),
+      )
+      console.log(
+        `   masa ${FICHA.masa} kg \u00b7 g = ${FICHA.gravedad} m/s\u00b2 \u00b7 ` +
+          `pendiente m\u00e1x ${FICHA.pendienteMax}\u00b0 \u00b7 ` +
+          `velocidad real NASA ${FICHA.velocidadNASA} m/s (tecla V)`,
+      )
+      window.__ruedas = rover.ruedas.ruedas
+    } else {
+      console.warn('No pude separar las ruedas del modelo: conduzco con el modo simple.')
+    }
 
     window.__camarasRover = nombres
     window.__app.rover = rover
@@ -240,8 +273,17 @@ function animate() {
     sun.target.updateMatrixWorld()
 
     if (estadoHud) {
-      estadoHud.textContent =
-        `${driver.estado.velocidad.toFixed(1)} m/s · ${driver.estado.distancia.toFixed(0)} m recorridos`
+      const e = driver.estado
+      const partes = [
+        `${e.velocidad.toFixed(e.velocidadReal ? 3 : 1)} m/s`,
+        `${e.rpm.toFixed(1)} rpm`,
+        `pendiente ${THREE.MathUtils.radToDeg(e.cabeceo).toFixed(0)}°`,
+        `${e.distancia.toFixed(0)} m`,
+      ]
+      if (e.deslizamiento > 0.08) partes.push(`patina ${(e.deslizamiento * 100).toFixed(0)}%`)
+      if (e.modo === 'sitio') partes.push('giro sobre sí mismo')
+      if (e.velocidadReal) partes.push('velocidad real NASA')
+      estadoHud.textContent = partes.join(' · ')
     }
   } else {
     sun.position.copy(SUN_DIR).multiplyScalar(200)
@@ -258,6 +300,28 @@ function animate() {
     objetos: scene.children.length,
     rover: rover ? rover.medidas : null,
     camarasRover: rover ? rover.camaras.map((c) => c.nombre) : null,
+    movilidad:
+      driver && driver.estado.ruedas.length
+        ? {
+            ruedas: driver.estado.ruedas.map((r) => ({
+              nombre: r.nombre,
+              dirige: r.dirige,
+              radio: +r.radio.toFixed(4),
+              giro: +r.anguloGiro.toFixed(4),
+              vueltas: +(r.anguloGiro / (Math.PI * 2)).toFixed(2),
+              rodado: +r.rodado.toFixed(2),
+              direccion: +r.anguloDireccion.toFixed(4),
+              rpm: +r.rpm.toFixed(2),
+              recorrido: +r.recorrido.toFixed(4),
+            })),
+            velocidad: driver.estado.velocidad,
+            rpm: driver.estado.rpm,
+            cabeceo: driver.estado.cabeceo,
+            balanceo: driver.estado.balanceo,
+            deslizamiento: driver.estado.deslizamiento,
+            modo: driver.estado.modo,
+          }
+        : null,
   }
   requestAnimationFrame(animate)
 }
