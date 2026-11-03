@@ -175,8 +175,15 @@ export function createRoverController(group, height, { onTrack, ruedas } = {}) {
     ruedas: ruedas ? ruedas.ruedas : [],
   }
 
+  // Con una foto abierta el rover no se conduce: las flechas pasan fotos.
+  let bloqueado = false
+  function bloquear(v) {
+    bloqueado = !!v
+    if (bloqueado) teclas.clear()
+  }
+
   const onKeyDown = (e) => {
-    if (e.repeat) return
+    if (e.repeat || bloqueado) return
     teclas.add(e.code)
     if (e.code === 'KeyR') reset()
     if (e.code === 'KeyV') estado.velocidadReal = !estado.velocidadReal
@@ -490,5 +497,5 @@ export function createRoverController(group, height, { onTrack, ruedas } = {}) {
     window.removeEventListener('keyup', onKeyUp)
   }
 
-  return { estado, update, reset, dispose, ruedas }
+  return { estado, update, reset, dispose, bloquear, ruedas }
 }

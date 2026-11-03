@@ -11,6 +11,8 @@ import { crearTelemetryAPI, objetoDeTelemetria } from './telemetry.js'
 import { crearProveedorNASA, CLAVES_NASA, solActual } from './providers/nasaWaypoints.js'
 import { crearProveedorLuz } from './providers/lightTime.js'
 import { createMissionControl } from './missionControl.js'
+import { crearCamarasDePercy } from './camaras.js'
+import { crearVisor } from './visor.js'
 
 // La escena está en metros. El rover mide 3 m de largo.
 
@@ -106,6 +108,8 @@ window.__app = { scene, camera, controls, renderer, sun, moons, tracks, SUN_DIR 
 
 let rover = null
 let driver = null
+let camaras = null
+let visor = null
 
 function colocarCamaraDetras(inmediato = false) {
   if (!rover) return
@@ -186,6 +190,51 @@ loadRover()
       console.warn('No pude separar las ruedas del modelo: conduzco con el modo simple.')
     }
 
+    // --- Las cámaras toman fotos reales ----------------------------------
+    visor = crearVisor({
+      onAbrir: () => {
+        driver.bloquear(true)
+        camaras.bloquear(true)
+        controls.enabled = false
+      },
+      onCerrar: () => {
+        driver.bloquear(false)
+        camaras.bloquear(false)
+        controls.enabled = true
+      },
+    })
+
+    camaras = crearCamarasDePercy(rover, {
+      camera,
+      dom: renderer.domElement,
+      onDisparo: (ficha) => visor.abrir(ficha),
+    })
+
+    console.log(
+      `%c\ud83d\udcf7 ${camaras.puntos.length} c\u00e1maras con fotos reales de la NASA ` +
+        `\u2014 haz clic en los puntos que brillan`,
+      'font-weight:bold;color:#d98a5c',
+    )
+    for (const p of camaras.puntos) {
+      console.log(`   \u00b7 ${p.ficha.nombre} (${p.ficha.pieza}) \u2014 ${p.ficha.fotos.length} fotos`)
+    }
+
+    window.__camarasPercy = {
+      piezas: camaras.puntos.map((p) => p.ficha.pieza),
+      puntoEnPantalla: camaras.puntoEnPantalla,
+      posicionEnMundo: camaras.posicionEnMundo,
+      estado: visor.estado,
+      listo: visor.listo,
+      abrir: (pieza) => {
+        const p = camaras.puntos.find((x) => x.ficha.pieza === pieza)
+        return p ? visor.abrir(p.ficha) : Promise.resolve()
+      },
+      cerrar: visor.cerrar,
+      pasar: visor.pasar,
+      ampliar: visor.ampliar,
+      get imagen() { return visor.imagen },
+    }
+
     window.__camarasRover = nombres
     window.__app.rover = rover
     window.__app.driver = driver
@@ -242,6 +291,8 @@ function animate() {
   last = now
 
   dust.userData.update(dt)
+
+  if (camaras) camaras.actualizar(dt)
 
   if (driver) {
     driver.update(dt)
@@ -300,6 +351,17 @@ function animate() {
     objetos: scene.children.length,
     rover: rover ? rover.medidas : null,
     camarasRover: rover ? rover.camaras.map((c) => c.nombre) : null,
+    fotos: visor
+      ? {
+          piezas: camaras.puntos.map((p) => p.ficha.pieza),
+          total: camaras.puntos.reduce((a, p) => a + p.ficha.fotos.length, 0),
+          abierto: visor.estado.abierto,
+          ampliada: visor.estado.ampliada,
+          camara: visor.estado.camara?.nombre ?? null,
+          foto: visor.estado.foto?.id ?? null,
+          error: visor.estado.error,
+        }
+      : null,
     movilidad:
       driver && driver.estado.ruedas.length
         ? {

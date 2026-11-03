@@ -34,3 +34,13 @@ Cada dato con su valor, una gráfica de toda la misión y una frase simple de qu
 
 Listo cuando: los 4 muestran números reales y T lo oculta. Amplía npm run check para que confirme que los 4 cargaron y que la consola no tiene errores.
 
+PEDIDO 5
+
+Ahora la experiencia mágica: que las cámaras de Percy tomen fotos reales de Marte.
+- Muestra 4 cámaras como puntos que brillan sobre sus piezas del modelo (Mastcam_Z_cams, NavCams, hazcams_front, WATSON), con su nombre al pasar el mouse.
+- Al hacer clic: obturador y flash, y la foto se revela poco a poco. Se queda quieta unos segundos, grande y fácil de ver; clic para ampliar, Esc para volver al juego, flechas para ver más fotos de esa cámara.
+- Fotos de esta API: https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&ver=1.2&num=100&page=0&order=sol+desc (por cámara: &search=&7CNAVCAM_LEFT%7C)
+- De cada cámara, las más impresionantes de los últimos días: a color, que se sienta Marte (horizonte, el brazo sobre el suelo, rocas de cerca). Nada de cielo vacio, sol, calibración ni miniaturas. Descarga y mira las fotos antes de escoger.
+- Cada foto dice cámara, sol y hace cuántos días.
+
+Listo cuando: cada cámara abre una foto real. Amplía npm run check para que haga clic en una cámara y guarde la captura con la foto abierta.

@@ -202,3 +202,249 @@ kbd {
   opacity: 0.45;
   letter-spacing: 0.04em;
 }
+
+/* ======================================================================
+   Cámaras de Percy: etiqueta, obturador y visor de fotos
+   ====================================================================== */
+
+.camara-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(26, 15, 10, 0.88);
+  border: 1px solid rgba(255, 186, 128, 0.3);
+  color: #ffe6cf;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+.camara-tip.visible { opacity: 1; }
+
+/* --- Obturador: dos cortinillas y un fogonazo ------------------------- */
+.obturador {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+  visibility: hidden;
+}
+.obturador.disparando { visibility: visible; }
+
+.obturador-hoja {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 52%;
+  background: #0b0603;
+  transform: translateY(0);
+}
+.obturador-hoja.arriba { top: -52%; }
+.obturador-hoja.abajo { bottom: -52%; }
+
+.obturador.disparando .obturador-hoja.arriba { animation: hoja-arriba 0.42s cubic-bezier(0.4, 0, 0.2, 1); }
+.obturador.disparando .obturador-hoja.abajo { animation: hoja-abajo 0.42s cubic-bezier(0.4, 0, 0.2, 1); }
+
+@keyframes hoja-arriba {
+  0% { transform: translateY(0); }
+  38% { transform: translateY(100%); }
+  52% { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+@keyframes hoja-abajo {
+  0% { transform: translateY(0); }
+  38% { transform: translateY(-100%); }
+  52% { transform: translateY(-100%); }
+  100% { transform: translateY(0); }
+}
+
+.obturador-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 46%, #fff 0%, #ffe9cd 38%, rgba(255, 220, 180, 0) 72%);
+  opacity: 0;
+}
+.obturador.disparando .obturador-flash { animation: fogonazo 0.5s ease-out; }
+
+@keyframes fogonazo {
+  0%, 36% { opacity: 0; }
+  44% { opacity: 0.92; }
+  100% { opacity: 0; }
+}
+
+/* --- Visor ------------------------------------------------------------ */
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  /* Mientras se funde sigue ocupando la pantalla entera, así que sin esto se
+     traga el ratón 300 ms después de cerrarlo y no se pueden pulsar los
+     puntos de cámara. La clase se quita al instante; el fundido, no. */
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0.3s;
+}
+.visor.abierto { opacity: 1; visibility: visible; pointer-events: auto; }
+
+.visor-fondo {
+  position: absolute;
+  inset: 0;
+  background: rgba(14, 8, 5, 0);
+  transition: background 0.35s ease;
+}
+.visor.ampliada .visor-fondo { background: rgba(10, 6, 3, 0.86); }
+
+.visor-marco {
+  position: relative;
+  z-index: 1;
+  /* El alto manda tanto como el ancho: la foto es 4:3 y, si solo se
+     limita el ancho, la tarjeta se sale de la pantalla. */
+  width: min(560px, 46vw, calc((72vh - 130px) * 4 / 3));
+  margin: 0;
+  padding: 12px 12px 10px;
+  border-radius: 12px;
+  background: rgba(26, 15, 10, 0.9);
+  border: 1px solid rgba(255, 186, 128, 0.22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+  cursor: zoom-in;
+  transform: translateY(16px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.42s ease, width 0.42s ease;
+}
+.visor.abierto .visor-marco { transform: none; opacity: 1; }
+.visor.ampliada .visor-marco {
+  width: min(1180px, 92vw, calc((88vh - 140px) * 4 / 3));
+  cursor: zoom-out;
+}
+
+.visor-lienzo {
+  position: relative;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #120a06;
+  aspect-ratio: 4 / 3;
+}
+.visor-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Estado de partida del revelado: oscura, plana y desenfocada. */
+  filter: brightness(0.1) contrast(0.35) saturate(0.15) blur(16px);
+  transform: scale(1.06);
+  opacity: 0.45;
+}
+.visor-lienzo.revelada .visor-img {
+  filter: none;
+  transform: none;
+  opacity: 1;
+  transition: filter 1.9s cubic-bezier(0.25, 0.8, 0.3, 1),
+    transform 2.1s cubic-bezier(0.25, 0.8, 0.3, 1), opacity 0.9s ease;
+}
+
+/* Grano del revelado: se va al terminar. */
+.visor-grano {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: radial-gradient(rgba(255, 220, 180, 0.11) 1px, transparent 1px);
+  background-size: 3px 3px;
+  transition: opacity 1.6s ease;
+}
+.visor-lienzo.revelada .visor-grano { opacity: 0; }
+
+.visor-pie {
+  padding: 10px 2px 0;
+  color: #ffe6cf;
+}
+.visor-camara {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffb97a;
+}
+.visor-texto {
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.42;
+}
+.visor-meta {
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.visor-barra {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 6px;
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+}
+.visor-barra.corriendo { opacity: 1; }
+.visor-barra i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ffb97a, #ffe6cf);
+  transform-origin: left center;
+}
+.visor-barra.corriendo i { animation: cuenta-atras 9s linear forwards; }
+.visor.ampliada .visor-barra { opacity: 0; }
+
+@keyframes cuenta-atras {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.visor-nav,
+.visor-pista {
+  position: absolute;
+  bottom: -26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #ffe6cf;
+  opacity: 0.55;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.visor-nav { left: 2px; }
+.visor-pista { right: 2px; }
+.visor-nav kbd,
+.visor-pista kbd {
+  display: inline-block;
+  min-width: 17px;
+  padding: 1px 4px;
+  margin: 0 1px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 230, 207, 0.35);
+  font-size: 10px;
+  font-family: inherit;
+  text-align: center;
+}
+.visor-contador { font-family: ui-monospace, Menlo, monospace; }
+
+@media (max-width: 900px) {
+  .visor-marco { width: 86vw; }
+  .visor.ampliada .visor-marco { width: 94vw; }
+}
